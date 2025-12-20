@@ -6,8 +6,11 @@ This apptainer contains code to reproduce running afnmr with simplest options (i
 
 The publicly-available apptainer is hosted at `oras://ghcr.io/hwaymentsteele/afnmr:0.1`.
 
-Re-build apptainer: `apptainer build afnmr.sif afnmr.def` (on CHTC, get interactive job using `condor_submit -i build.sub`)
-
 Run afnmr on CHTC: `condor_submit afnmr.sub`, ensuring `run_afnmr.sh` is in the same dir unless you've modified to account for that.
 
 
+### Build instructions
+
+To re-build apptainer: `apptainer build afnmr.sif afnmr.def` (on CHTC, get interactive job using `condor_submit -i build.sub`)
+
+Test: `apptainer shell bash test_afnmr.sh`
