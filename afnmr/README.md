@@ -1,4 +1,6 @@
-#AF-NMR: chemical shift predictor from structure based on quantum chemistry
+# AF-NMR: chemical shift predictor from structure based on quantum chemistry
+
+Last updated H Wayment-Steele, Dec 2025
 
 This apptainer contains code to reproduce running afnmr with simplest options (i.e., `afnmr 1UBQ.pdb`).
 
