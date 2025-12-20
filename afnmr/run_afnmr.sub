@@ -2,9 +2,9 @@ JobBatchName            = "AF-NMR"
 container_image         = oras://ghcr.io/hwaymentsteele/afnmr:0.1
 
 # Artefact
-executable              = run.sh
+executable              = _run.sh
 arguments               = $(PDB)
-transfer_input_files    = run.sh, $(PDB)
+transfer_input_files    = _run.sh, $(PDB)
 transfer_output_files   = ""
 
 # Logging
