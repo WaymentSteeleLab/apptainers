@@ -1,0 +1,105 @@
+Bootstrap: docker
+From: condaforge/mambaforge:latest
+
+%arguments
+    HF_TOKEN=<YOUR_TOKEN_HERE>
+
+%post
+   # Create conda environment
+    mamba create -n dyna1 -y \
+        -c conda-forge \
+        python=3.11 \
+        pip \
+        wheel \
+        setuptools
+
+    . /opt/conda/etc/profile.d/conda.sh
+    conda activate dyna1
+
+    # PyTorch with CUDA 12.4 support (matches README: torch 2.4.1, CUDA 12.4)
+    pip install \
+        torch==2.4.1 \
+        torchaudio==2.4.1 \
+        torchvision==0.19.1 \
+        --index-url https://download.pytorch.org/whl/cu124
+
+    # Core requirements from requirements.txt
+    pip install \
+        "transformers<4.47.0" \
+        ipython \
+        einops \
+        "biotite==0.41.2" \
+        msgpack-numpy \
+        biopython \
+        scikit-learn \
+        brotli \
+        attrs \
+        pandas \
+        cloudpathlib \
+        tenacity \
+        wandb \
+        torcheval \
+        mdtraj \
+        MDAnalysis \
+        torchtext \
+        huggingface_hub
+
+    # Clone Dyna-1 repository
+    git clone https://github.com/WaymentSteeleLab/Dyna-1.git /opt/dyna1
+    chmod -R 755 /opt/dyna1
+
+    # Download Dyna-1 model weights using the HuggingFace token
+    # gelnesr/Dyna-1 weights require HF login; token passed via --build-arg HF_TOKEN=<your_token>
+    if [ -n "{{ HF_TOKEN }}" ]; then
+        huggingface-cli login --token "{{ HF_TOKEN }}"
+        huggingface-cli download gelnesr/Dyna-1 \
+            --local-dir /opt/dyna1/model/weights/
+        echo "Dyna-1 weights downloaded successfully."
+    else
+        echo "WARNING: No HF_TOKEN provided. Dyna-1 model weights were NOT downloaded."
+        echo "You must mount or copy weights to /opt/dyna1/model/weights/ before running inference."
+    fi
+
+    pip cache purge
+    mamba clean --all -y
+
+%environment
+    . /opt/conda/etc/profile.d/conda.sh
+    conda activate dyna1
+    export LD_LIBRARY_PATH=/opt/conda/envs/dyna1/lib:$LD_LIBRARY_PATH
+    # HF_TOKEN must be set at runtime for ESM-3 weight access (EvolutionaryScale gated model)
+    # Export it in your HTCondor submit file: environment = "HF_TOKEN=<your_token>"
+
+%runscript
+    . /opt/conda/etc/profile.d/conda.sh
+    conda activate dyna1
+    cd /opt/dyna1
+    exec python "$@"
+
+%startscript
+    . /opt/conda/etc/profile.d/conda.sh
+    conda activate dyna1
+
+%labels
+    Author WaymentSteeleLab
+    Version 1.0
+    Description Dyna-1: micro-millisecond protein dynamics prediction (ESM-3 version)
+
+%help
+    Dyna-1 predicts micro-millisecond protein dynamics from sequence and/or structure.
+
+    BUILD (provide your HuggingFace token to download Dyna-1 weights at build time):
+        apptainer build --build-arg HF_TOKEN=<your_hf_token> dyna1.sif dyna1.def
+
+    If you skip the token at build time, mount the weights directory at runtime:
+        apptainer run --bind /path/to/weights:/opt/dyna1/model/weights dyna1.sif
+
+    RUNTIME — ESM-3 weights (EvolutionaryScale gated model) are fetched from HuggingFace
+    on first use. Set HF_TOKEN before running:
+        export HF_TOKEN=<your_hf_token>
+        apptainer run --env HF_TOKEN=$HF_TOKEN dyna1.sif dyna1.py \
+            --pdb <PDB_CODE_OR_PATH> --chain <CHAIN> --name <NAME> \
+            --use_pdb_seq --write_to_pdb
+
+    ESM-2 version (no gated weights needed):
+        apptainer run dyna1.sif dyna1-esm2.py --sequence <SEQ> --name <NAME>
